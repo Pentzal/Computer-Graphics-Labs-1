@@ -1,0 +1,10 @@
+^C:\USERS\23644703\SOURCE\REPOS\COMPUTERGRAPHICSLABS1\COMPUTER-GRAPHICS-LABS-1\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/23644703/source/repos/ComputerGraphicsLabs1/Computer-Graphics-Labs-1 -BC:/Users/23644703/source/repos/ComputerGraphicsLabs1/Computer-Graphics-Labs-1/build --check-stamp-file C:/Users/23644703/source/repos/ComputerGraphicsLabs1/Computer-Graphics-Labs-1/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
