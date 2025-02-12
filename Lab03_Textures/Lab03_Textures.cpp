@@ -56,12 +56,52 @@ int main( void )
 	// Ensure we can capture keyboard inputs
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     
-    // Define vertices
-    const float vertices[] = {
-        // x     y     z
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
+#pragma region 3.2. Texture Rectangle
+    //const float vertices[] = {
+    //    // x     y     z
+    //    -0.5f, -0.5f, 0.0f, // Triangle 1
+    //     0.5f, -0.5f, 0.0f,
+    //     0.5f,  0.5f, 0.0f,
+    //    -0.5f, -0.5f, 0.0f, // Triangle 2
+    //     0.5f,  0.5f, 0.0f,
+    //    -0.5f,  0.5f, 0.0f
+    //};
+
+    //// 3.1.2. Texture Coordinates
+    //const float uv[] = {
+    //  // u     v
+    //    0.0f, 0.0f, // Triangle 1
+    //    1.0f, 0.0f,
+    //    1.0f, 1.0f,
+    //    0.0f, 0.0f, // Triangle 2
+    //    1.0f, 1.0f,
+    //    0.0f, 1.0f
+    //};
+#pragma endregion
+
+    // 3.2.1. Element Buffer Objects
+    // Define vertex positions
+    static const float vertices[] = {
+        // x     y     z      index
+        -0.5f, -0.5f, 0.0f,  // 0       3 -- 2
+         0.5f, -0.5f, 0.0f,  // 1       |  / |  
+         0.5f,  0.5f, 0.0f,  // 2       | /  |
+        -0.5f,  0.5f, 0.0f   // 3       0 -- 1
+    };
+
+    // Define texture coordinates
+    static const float uv[] = {
+        // u    v      index
+        0.0f,  0.0f,  // 0
+        1.0f,  0.0f,  // 1
+        1.0f,  1.0f,  // 2
+        0.0f,  1.0f,  // 3
+    };
+
+    // Define indices
+    static const unsigned int indices[] = {
+        0, 1, 2,  // lower-right triangle
+        0, 2, 3   // upper-left triangle
     };
   
     // Create the Vertex Array Object (VAO)
@@ -74,13 +114,76 @@ int main( void )
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Create texture buffer
+    unsigned int uvBuffer;
+    glGenBuffers(1, &uvBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(uv), uv, GL_STATIC_DRAW);
+
+    // Create Element Buffer Object (EBO)
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     
     // Compile shader program
     unsigned int shaderID;
     shaderID = LoadShaders("vertexShader.glsl", "fragmentShader.glsl");
+
+    // 3.1.1. Creating a texture
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Bind texture to the VAO
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Load the textures
+        // Load texture image from file
+    const char* path = "../assets/mario.png";
+        // 3.5. Multiple textures
+    unsigned int texture1 = loadTexture("../assets/crate.jpg");
+    unsigned int texture2 = loadTexture("../assets/mario.png");
+    int width, height, nChanls;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load(path, &width, &height, &nChanls, 0);
+
+    if (data)
+        std::cout << "Texture loaded!" << std::endl;
+    else
+        std::cout << "Texture not loaded! Check the path?" << std::endl;
+
+    // Specify 2D texture
+        // .jpg extension
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        // .png extension
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // 3.3.1. Texture Wrapping
+        // Set texture wrapping options
+    /*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);*/
+        // 3.3.2.1. Neasrest Neighbor Interpolation
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // 3.4. Mipmaps
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    // Free the image from the memory
+    stbi_image_free(data);
     
     // Use the shader program
     glUseProgram(shaderID);
+    // 3.5.1. Uniforms
+    glUniform1i(glGetUniformLocation(shaderID, "texture1"), 0);
+    glUniform1i(glGetUniformLocation(shaderID, "texture2"), 1);
+    // Bind the textures
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture2);
     
     // Render loop
 	while (!glfwWindowShouldClose(window))
@@ -96,10 +199,17 @@ int main( void )
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+
+        // Send the UV buffer to the shaders
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, uvBuffer);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
         
-        // Draw the triangle
-        glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / sizeof(float));
+        // Draw the triangles
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(unsigned int), GL_UNSIGNED_INT, 0);
+
         glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
         
 		// Swap buffers
 		glfwSwapBuffers(window);
